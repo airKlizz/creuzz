@@ -9,8 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	creuzzv1alpha1 "github.com/airklizz/creuzz/api/v1alpha1"
 )
 
@@ -30,9 +28,7 @@ var _ = Describe("ClusterAgentEnv Controller", func() {
 			err := k8sClient.Get(ctx, typeNamespacedName, clusteragentenv)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &creuzzv1alpha1.ClusterAgentEnv{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: resourceName,
-					},
+					Name: resourceName,
 					Spec: creuzzv1alpha1.ClusterAgentEnvSpec{
 						Variables: []creuzzv1alpha1.EnvVariable{
 							{Name: "TEST_VAR", Value: "test-value"},

@@ -30,6 +30,11 @@ const (
 	gitSecretVolume    = "git-ssh"
 	workspaceVolume    = "workspace"
 	configVolume       = "opencode-config"
+
+	labelAppName      = "app.kubernetes.io/name"
+	labelAppInstance  = "app.kubernetes.io/instance"
+	labelAppComponent = "app.kubernetes.io/component"
+	appNameValue      = "opencode-agent"
 )
 
 // OpenCodeAgentReconciler reconciles a OpenCodeAgent object
@@ -55,14 +60,14 @@ type OpenCodeAgentReconciler struct {
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 func (r *OpenCodeAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	var agent creuzzv1alpha1.OpenCodeAgent
 	if err := r.Get(ctx, req.NamespacedName, &agent); err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "Failed to get OpenCodeAgent")
+		logger.Error(err, "Failed to get OpenCodeAgent")
 		return ctrl.Result{}, err
 	}
 
@@ -74,7 +79,7 @@ func (r *OpenCodeAgentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	resources, err := r.resolveClusterResources(ctx, &agent)
 	if err != nil {
-		log.Error(err, "Failed to resolve cluster resources")
+		logger.Error(err, "Failed to resolve cluster resources")
 		if updateErr := r.updateStatus(ctx, &agent, creuzzv1alpha1.AgentPhaseFailed, err.Error()); updateErr != nil {
 			return ctrl.Result{}, updateErr
 		}
@@ -83,31 +88,31 @@ func (r *OpenCodeAgentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	configMap := r.buildConfigMap(&agent, resources)
 	if err := r.createOrUpdate(ctx, &agent, configMap); err != nil {
-		log.Error(err, "Failed to create/update ConfigMap")
+		logger.Error(err, "Failed to create/update ConfigMap")
 		return ctrl.Result{}, err
 	}
 
 	netPol := r.buildNetworkPolicy(&agent, resources)
 	if err := r.createOrUpdate(ctx, &agent, netPol); err != nil {
-		log.Error(err, "Failed to create/update NetworkPolicy")
+		logger.Error(err, "Failed to create/update NetworkPolicy")
 		return ctrl.Result{}, err
 	}
 
 	pvc := r.buildPVC(&agent)
 	if err := r.createOrUpdate(ctx, &agent, pvc); err != nil {
-		log.Error(err, "Failed to create/update PVC")
+		logger.Error(err, "Failed to create/update PVC")
 		return ctrl.Result{}, err
 	}
 
 	pod := r.buildPod(&agent, resources, configMap.Name, pvc.Name)
 	if err := r.createOrUpdate(ctx, &agent, pod); err != nil {
-		log.Error(err, "Failed to create/update Pod")
+		logger.Error(err, "Failed to create/update Pod")
 		return ctrl.Result{}, err
 	}
 
 	svc := r.buildService(&agent)
 	if err := r.createOrUpdate(ctx, &agent, svc); err != nil {
-		log.Error(err, "Failed to create/update Service")
+		logger.Error(err, "Failed to create/update Service")
 		return ctrl.Result{}, err
 	}
 
@@ -116,7 +121,7 @@ func (r *OpenCodeAgentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	log.Info("Successfully reconciled OpenCodeAgent", "name", agent.Name, "namespace", agent.Namespace)
+	logger.Info("Successfully reconciled OpenCodeAgent", "name", agent.Name, "namespace", agent.Namespace)
 	return ctrl.Result{}, nil
 }
 
@@ -181,14 +186,14 @@ func (r *OpenCodeAgentReconciler) buildConfigMap(agent *creuzzv1alpha1.OpenCodeA
 		data["skill-"+skill.Spec.FileName] = skill.Spec.Content
 	}
 
-	mcpConfig := map[string]interface{}{
-		"mcp": map[string]interface{}{
-			"servers": map[string]interface{}{},
+	mcpConfig := map[string]any{
+		"mcp": map[string]any{
+			"servers": map[string]any{},
 		},
 	}
-	servers := mcpConfig["mcp"].(map[string]interface{})["servers"].(map[string]interface{})
+	servers := mcpConfig["mcp"].(map[string]any)["servers"].(map[string]any)
 	for _, mcp := range res.mcpServers {
-		servers[mcp.Name] = map[string]interface{}{
+		servers[mcp.Name] = map[string]any{
 			"type": "sse",
 			"url":  fmt.Sprintf("http://localhost:%d", mcp.Spec.Port),
 		}
@@ -197,18 +202,15 @@ func (r *OpenCodeAgentReconciler) buildConfigMap(agent *creuzzv1alpha1.OpenCodeA
 	data["opencode.json"] = string(opencodeJSON)
 
 	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      agent.Name + "-config",
-			Namespace: agent.Namespace,
-		},
-		Data: data,
+		Name:      agent.Name + "-config",
+		Namespace: agent.Namespace,
+		Data:      data,
 	}
 }
 
 func buildConfigMapItems(res *resolvedResources) []corev1.KeyToPath {
-	items := []corev1.KeyToPath{
-		{Key: "opencode.json", Path: "opencode.json"},
-	}
+	items := make([]corev1.KeyToPath, 1, 1+len(res.skills))
+	items[0] = corev1.KeyToPath{Key: "opencode.json", Path: "opencode.json"}
 	for _, skill := range res.skills {
 		items = append(items, corev1.KeyToPath{
 			Key:  "skill-" + skill.Spec.FileName,
@@ -219,20 +221,19 @@ func buildConfigMapItems(res *resolvedResources) []corev1.KeyToPath {
 }
 
 func (r *OpenCodeAgentReconciler) buildNetworkPolicy(agent *creuzzv1alpha1.OpenCodeAgent, res *resolvedResources) *networkingv1.NetworkPolicy {
-	egressRules := []networkingv1.NetworkPolicyEgressRule{
-		{
-			Ports: []networkingv1.NetworkPolicyPort{
-				{Protocol: protoPtr(corev1.ProtocolUDP), Port: intstrPtr(53)},
-				{Protocol: protoPtr(corev1.ProtocolTCP), Port: intstrPtr(53)},
-			},
-			To: []networkingv1.NetworkPolicyPeer{
-				{
-					NamespaceSelector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{"kubernetes.io/metadata.name": "kube-system"},
-					},
-					PodSelector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{"k8s-app": "kube-dns"},
-					},
+	egressRules := make([]networkingv1.NetworkPolicyEgressRule, 1, 1+len(res.egressRules))
+	egressRules[0] = networkingv1.NetworkPolicyEgressRule{
+		Ports: []networkingv1.NetworkPolicyPort{
+			{Protocol: protocolPtr(corev1.ProtocolUDP), Port: intstrPtr(53)},
+			{Protocol: protocolPtr(corev1.ProtocolTCP), Port: intstrPtr(53)},
+		},
+		To: []networkingv1.NetworkPolicyPeer{
+			{
+				NamespaceSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{"kubernetes.io/metadata.name": "kube-system"},
+				},
+				PodSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{"k8s-app": "kube-dns"},
 				},
 			},
 		},
@@ -262,7 +263,7 @@ func (r *OpenCodeAgentReconciler) buildNetworkPolicy(agent *creuzzv1alpha1.OpenC
 		}
 		if len(ports) == 0 {
 			ports = append(ports, networkingv1.NetworkPolicyPort{
-				Protocol: protoPtr(corev1.ProtocolTCP),
+				Protocol: protocolPtr(corev1.ProtocolTCP),
 				Port:     intstrPtr(443),
 			})
 		}
@@ -274,13 +275,11 @@ func (r *OpenCodeAgentReconciler) buildNetworkPolicy(agent *creuzzv1alpha1.OpenC
 	}
 
 	return &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      agent.Name + "-netpol",
-			Namespace: agent.Namespace,
-		},
+		Name:      agent.Name + "-netpol",
+		Namespace: agent.Namespace,
 		Spec: networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{"app.kubernetes.io/name": "opencode-agent", "app.kubernetes.io/instance": agent.Name},
+				MatchLabels: map[string]string{labelAppName: appNameValue, labelAppInstance: agent.Name},
 			},
 			PolicyTypes: []networkingv1.PolicyType{
 				networkingv1.PolicyTypeIngress,
@@ -289,7 +288,7 @@ func (r *OpenCodeAgentReconciler) buildNetworkPolicy(agent *creuzzv1alpha1.OpenC
 			Ingress: []networkingv1.NetworkPolicyIngressRule{
 				{
 					Ports: []networkingv1.NetworkPolicyPort{
-						{Protocol: protoPtr(corev1.ProtocolTCP), Port: intstrPtr(opencodePort)},
+						{Protocol: protocolPtr(corev1.ProtocolTCP), Port: intstrPtr(opencodePort)},
 					},
 				},
 			},
@@ -301,10 +300,8 @@ func (r *OpenCodeAgentReconciler) buildNetworkPolicy(agent *creuzzv1alpha1.OpenC
 func (r *OpenCodeAgentReconciler) buildPVC(agent *creuzzv1alpha1.OpenCodeAgent) *corev1.PersistentVolumeClaim {
 	storageQty := resource.MustParse(agent.Spec.Runtime.Storage)
 	return &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      agent.Name + "-workspace",
-			Namespace: agent.Namespace,
-		},
+		Name:      agent.Name + "-workspace",
+		Namespace: agent.Namespace,
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			Resources: corev1.VolumeResourceRequirements{
@@ -318,53 +315,47 @@ func (r *OpenCodeAgentReconciler) buildPVC(agent *creuzzv1alpha1.OpenCodeAgent) 
 
 func (r *OpenCodeAgentReconciler) buildPod(agent *creuzzv1alpha1.OpenCodeAgent, res *resolvedResources, configMapName, pvcName string) *corev1.Pod {
 	labels := map[string]string{
-		"app.kubernetes.io/name":      "opencode-agent",
-		"app.kubernetes.io/instance":  agent.Name,
-		"app.kubernetes.io/component": "agent",
+		labelAppName:      appNameValue,
+		labelAppInstance:  agent.Name,
+		labelAppComponent: "agent",
 	}
 
-	volumes := []corev1.Volume{
-		{
+	volumes := make([]corev1.Volume, 0, 3+len(res.tools))
+	volumes = append(volumes,
+		corev1.Volume{
 			Name: workspaceVolume,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: pvcName,
-				},
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: pvcName,
 			},
 		},
-		{
+		corev1.Volume{
 			Name: configVolume,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: configMapName},
-					Items:                buildConfigMapItems(res),
-				},
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				Name:  configMapName,
+				Items: buildConfigMapItems(res),
 			},
 		},
-		{
+		corev1.Volume{
 			Name: gitSecretVolume,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: agent.Spec.Project.SecretRef,
-				},
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: agent.Spec.Project.SecretRef,
 			},
 		},
-	}
+	)
 
-	volumeMounts := []corev1.VolumeMount{
-		{Name: workspaceVolume, MountPath: workspaceMountPath},
-		{Name: configVolume, MountPath: configMountPath},
-	}
+	volumeMounts := make([]corev1.VolumeMount, 0, 2+len(res.tools))
+	volumeMounts = append(volumeMounts,
+		corev1.VolumeMount{Name: workspaceVolume, MountPath: workspaceMountPath},
+		corev1.VolumeMount{Name: configVolume, MountPath: configMountPath},
+	)
 
 	for _, tool := range res.tools {
 		volName := "tool-" + tool.Name
 		volumes = append(volumes, corev1.Volume{
 			Name: volName,
-			VolumeSource: corev1.VolumeSource{
-				Image: &corev1.ImageVolumeSource{
-					Reference:  tool.Spec.Image,
-					PullPolicy: corev1.PullIfNotPresent,
-				},
+			Image: &corev1.ImageVolumeSource{
+				Reference:  tool.Spec.Image,
+				PullPolicy: corev1.PullIfNotPresent,
 			},
 		})
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
@@ -396,15 +387,15 @@ func (r *OpenCodeAgentReconciler) buildPod(agent *creuzzv1alpha1.OpenCodeAgent, 
 				Name: s.Name,
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: s.SecretRef},
-						Key:                  s.Key,
+						Name: s.SecretRef,
+						Key:  s.Key,
 					},
 				},
 			})
 		}
 	}
 
-	containers := []corev1.Container{}
+	containers := make([]corev1.Container, 0, len(res.mcpServers)+1)
 
 	for _, mcp := range res.mcpServers {
 		mcpContainer := corev1.Container{
@@ -421,7 +412,7 @@ func (r *OpenCodeAgentReconciler) buildPod(agent *creuzzv1alpha1.OpenCodeAgent, 
 			mcpContainer.EnvFrom = []corev1.EnvFromSource{
 				{
 					SecretRef: &corev1.SecretEnvSource{
-						LocalObjectReference: corev1.LocalObjectReference{Name: mcp.Spec.EnvFromSecret},
+						Name: mcp.Spec.EnvFromSecret,
 					},
 				},
 			}
@@ -477,11 +468,9 @@ func (r *OpenCodeAgentReconciler) buildPod(agent *creuzzv1alpha1.OpenCodeAgent, 
 	}
 
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      agent.Name + "-agent",
-			Namespace: agent.Namespace,
-			Labels:    labels,
-		},
+		Name:      agent.Name + "-agent",
+		Namespace: agent.Namespace,
+		Labels:    labels,
 		Spec: corev1.PodSpec{
 			InitContainers: initContainers,
 			Containers:     containers,
@@ -493,14 +482,12 @@ func (r *OpenCodeAgentReconciler) buildPod(agent *creuzzv1alpha1.OpenCodeAgent, 
 
 func (r *OpenCodeAgentReconciler) buildService(agent *creuzzv1alpha1.OpenCodeAgent) *corev1.Service {
 	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      agent.Name + "-svc",
-			Namespace: agent.Namespace,
-		},
+		Name:      agent.Name + "-svc",
+		Namespace: agent.Namespace,
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
-				"app.kubernetes.io/name":     "opencode-agent",
-				"app.kubernetes.io/instance": agent.Name,
+				labelAppName:     appNameValue,
+				labelAppInstance: agent.Name,
 			},
 			Ports: []corev1.ServicePort{
 				{
@@ -617,10 +604,10 @@ func (r *OpenCodeAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *OpenCodeAgentReconciler) makeFindAgentsFunc(getRefs func(*creuzzv1alpha1.OpenCodeAgent) []creuzzv1alpha1.ClusterResourceRef) handler.MapFunc {
 	return func(ctx context.Context, obj client.Object) []reconcile.Request {
-		log := log.FromContext(ctx)
+		logger := log.FromContext(ctx)
 		var agentList creuzzv1alpha1.OpenCodeAgentList
 		if err := r.List(ctx, &agentList); err != nil {
-			log.Error(err, "Failed to list OpenCodeAgents")
+			logger.Error(err, "Failed to list OpenCodeAgents")
 			return nil
 		}
 
@@ -633,10 +620,8 @@ func (r *OpenCodeAgentReconciler) makeFindAgentsFunc(getRefs func(*creuzzv1alpha
 			for _, ref := range refs {
 				if ref.Name == objName {
 					requests = append(requests, reconcile.Request{
-						NamespacedName: types.NamespacedName{
-							Name:      agent.Name,
-							Namespace: agent.Namespace,
-						},
+						Name:      agent.Name,
+						Namespace: agent.Namespace,
 					})
 					break
 				}
@@ -647,7 +632,11 @@ func (r *OpenCodeAgentReconciler) makeFindAgentsFunc(getRefs func(*creuzzv1alpha
 	}
 }
 
-func protoPtr(p corev1.Protocol) *corev1.Protocol { return &p }
+func protocolPtr(p corev1.Protocol) *corev1.Protocol {
+	q := new(corev1.Protocol)
+	*q = p
+	return q
+}
 func intstrPtr(i int) *intstr.IntOrString {
 	v := intstr.FromInt(i)
 	return &v

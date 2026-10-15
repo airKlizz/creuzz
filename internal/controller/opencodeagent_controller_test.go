@@ -9,8 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	creuzzv1alpha1 "github.com/airklizz/creuzz/api/v1alpha1"
 )
 
@@ -34,10 +32,8 @@ var _ = Describe("OpenCodeAgent Controller", func() {
 			err := k8sClient.Get(ctx, typeNamespacedName, opencodeagent)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &creuzzv1alpha1.OpenCodeAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: resourceNamespace,
-					},
+					Name:      resourceName,
+					Namespace: resourceNamespace,
 					Spec: creuzzv1alpha1.OpenCodeAgentSpec{
 						Project: creuzzv1alpha1.ProjectSpec{
 							RepoURL:   "git@github.com:orga/test.git",
