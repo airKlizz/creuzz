@@ -1,0 +1,50 @@
+# Catalog: Tools
+#
+# Common CLI tools as OCI images.
+# Apply with: kubectl apply -f tools.yaml
+
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentTool
+metadata:
+  name: terraform-1-5
+spec:
+  image: "hashicorp/terraform:1.5.7"
+  mountPath: "/opt/tools/terraform"
+  binPath: "/opt/tools/terraform/bin"
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentTool
+metadata:
+  name: node-20
+spec:
+  image: "node:20-alpine"
+  mountPath: "/opt/tools/node"
+  binPath: "/opt/tools/node/bin"
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentTool
+metadata:
+  name: python-3-12
+spec:
+  image: "python:3.12-slim"
+  mountPath: "/opt/tools/python"
+  binPath: "/usr/local/bin"
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentTool
+metadata:
+  name: kubectl-1-28
+spec:
+  image: "bitnami/kubectl:1.28"
+  mountPath: "/opt/tools/kubectl"
+  binPath: "/opt/bitnami/kubectl/bin"
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentTool
+metadata:
+  name: aws-cli
+spec:
+  image: "amazon/aws-cli:2.15.0"
+  mountPath: "/opt/tools/aws"
+  binPath: "/usr/local/bin"

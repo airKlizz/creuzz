@@ -1,0 +1,11 @@
+## Append samples of your project ##
+resources:
+- creuzz.io_v1alpha1_clusteragentegressrule.yaml
+- creuzz.io_v1alpha1_clusteragentegressrule_github.yaml
+- creuzz.io_v1alpha1_clusteragenttool.yaml
+- creuzz.io_v1alpha1_clusteragenttool_node.yaml
+- creuzz.io_v1alpha1_clusteragentenv.yaml
+- creuzz.io_v1alpha1_opencodeagent.yaml
+- creuzz.io_v1alpha1_clusteragentskill.yaml
+- creuzz.io_v1alpha1_clusteragentmcpserver.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

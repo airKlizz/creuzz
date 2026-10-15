@@ -1,0 +1,28 @@
+apiVersion: creuzz.io/v1alpha1
+kind: OpenCodeAgent
+metadata:
+  name: billing-migration
+  namespace: team-backend
+spec:
+  project:
+    repoUrl: "git@github.com:orga/billing-service.git"
+    branch: "refactor/v2"
+    secretRef: "github-ssh-creds"
+  runtime:
+    image: "registry.interne/opencode-base:v2.0.0"
+    cpu: "2"
+    memory: "4Gi"
+    storage: "10Gi"
+  clusterToolRefs:
+    - name: "terraform-1-5"
+    - name: "node-20"
+  clusterSkillRefs:
+    - name: "clean-architecture"
+  clusterMcpRefs:
+    - name: "postgres-staging"
+  clusterEnvRefs:
+    - name: "aws-dev-profile"
+  clusterEgressRefs:
+    - name: "allow-anthropic"
+    - name: "allow-github"
+  ttlAfterIdle: "2h"

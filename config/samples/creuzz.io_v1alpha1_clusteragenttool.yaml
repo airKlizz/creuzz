@@ -1,0 +1,8 @@
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentTool
+metadata:
+  name: terraform-1-5
+spec:
+  image: "registry.interne/tools/terraform:1.5.7"
+  mountPath: "/opt/tools/terraform"
+  binPath: "/opt/tools/terraform/bin"

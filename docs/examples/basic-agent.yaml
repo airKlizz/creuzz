@@ -1,0 +1,29 @@
+# Basic Agent Example
+#
+# Minimal OpenCode agent with one skill.
+# Prerequisites:
+#   - Namespace 'team-backend' exists
+#   - Secret 'github-ssh-creds' exists in team-backend
+#   - ClusterAgentSkill 'clean-architecture' exists
+#
+apiVersion: creuzz.io/v1alpha1
+kind: OpenCodeAgent
+metadata:
+  name: basic-agent
+  namespace: team-backend
+  labels:
+    app.kubernetes.io/name: basic-agent
+  annotations:
+    description: "Minimal agent example for getting started"
+spec:
+  project:
+    repoUrl: "https://github.com/octocat/Hello-World.git"
+    branch: "master"
+    secretRef: "github-ssh-creds"
+  runtime:
+    image: "alpine:latest"  # Replace with your OpenCode base image
+    cpu: "500m"
+    memory: "512Mi"
+    storage: "1Gi"
+  clusterSkillRefs:
+    - name: "clean-architecture"

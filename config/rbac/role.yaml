@@ -1,0 +1,89 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - persistentvolumeclaims
+  - pods
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - creuzz.io
+  resources:
+  - clusteragentegressrules
+  - clusteragentenvs
+  - clusteragentmcpservers
+  - clusteragentskills
+  - clusteragenttools
+  - opencodeagents
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - creuzz.io
+  resources:
+  - clusteragentegressrules/finalizers
+  - clusteragentenvs/finalizers
+  - clusteragentmcpservers/finalizers
+  - clusteragentskills/finalizers
+  - clusteragenttools/finalizers
+  - opencodeagents/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - creuzz.io
+  resources:
+  - clusteragentegressrules/status
+  - clusteragentenvs/status
+  - clusteragentmcpservers/status
+  - clusteragentskills/status
+  - clusteragenttools/status
+  - opencodeagents/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

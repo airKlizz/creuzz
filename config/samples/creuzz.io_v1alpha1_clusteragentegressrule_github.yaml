@@ -1,0 +1,14 @@
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentEgressRule
+metadata:
+  name: allow-github
+spec:
+  description: "GitHub API et git"
+  domains:
+    - "github.com"
+    - "api.github.com"
+  ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 22
