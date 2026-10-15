@@ -1,0 +1,110 @@
+# Catalog: Egress Rules
+#
+# Network egress rules for agents.
+# Apply with: kubectl apply -f egress-rules.yaml
+
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentEgressRule
+metadata:
+  name: allow-anthropic
+spec:
+  description: "Anthropic Claude API"
+  domains:
+    - "api.anthropic.com"
+  ports:
+    - protocol: TCP
+      port: 443
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentEgressRule
+metadata:
+  name: allow-openai
+spec:
+  description: "OpenAI API"
+  domains:
+    - "api.openai.com"
+  ports:
+    - protocol: TCP
+      port: 443
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentEgressRule
+metadata:
+  name: allow-github
+spec:
+  description: "GitHub API and git operations"
+  domains:
+    - "github.com"
+    - "api.github.com"
+    - "raw.githubusercontent.com"
+    - "codeload.github.com"
+    - "objects.githubusercontent.com"
+  ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 22
+    - protocol: TCP
+      port: 9418
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentEgressRule
+metadata:
+  name: allow-gitlab
+spec:
+  description: "GitLab API and git operations"
+  domains:
+    - "gitlab.com"
+    - "*.gitlab.com"
+  ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 22
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentEgressRule
+metadata:
+  name: allow-package-registries
+spec:
+  description: "Package registries for builds"
+  domains:
+    - "registry.npmjs.org"
+    - "pypi.org"
+    - "files.pythonhosted.org"
+    - "repo1.maven.org"
+    - "plugins.gradle.org"
+    - "registry-1.docker.io"
+    - "auth.docker.io"
+    - "production.cloudflare.docker.com"
+  ports:
+    - protocol: TCP
+      port: 443
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentEgressRule
+metadata:
+  name: allow-aws
+spec:
+  description: "AWS services (S3, DynamoDB, etc.)"
+  domains:
+    - "*.amazonaws.com"
+  ports:
+    - protocol: TCP
+      port: 443
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentEgressRule
+metadata:
+  name: allow-docker-hub
+spec:
+  description: "Docker Hub for image pulls"
+  domains:
+    - "registry-1.docker.io"
+    - "auth.docker.io"
+    - "production.cloudflare.docker.com"
+    - "cdn-auth0.docker.com"
+  ports:
+    - protocol: TCP
+      port: 443

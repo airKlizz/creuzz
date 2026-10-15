@@ -1,0 +1,59 @@
+# Catalog: MCP Servers
+#
+# Model Context Protocol servers.
+# Apply with: kubectl apply -f mcp-servers.yaml
+#
+# Note: Required secrets must be created in the target namespace:
+#   - staging-db-creds (POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DATABASE)
+#   - github-token (GITHUB_TOKEN)
+#   - internal-api-creds (API_KEY)
+
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentMCPServer
+metadata:
+  name: postgres-staging
+spec:
+  image: "mcp/postgres:1.2.0"
+  port: 8001
+  args: ["--port", "8001"]
+  envFromSecret: "staging-db-creds"
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentMCPServer
+metadata:
+  name: postgres-prod-readonly
+spec:
+  image: "mcp/postgres:1.2.0"
+  port: 8002
+  args: ["--port", "8002", "--read-only"]
+  envFromSecret: "prod-db-creds"
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentMCPServer
+metadata:
+  name: github-mcp
+spec:
+  image: "mcp/github:latest"
+  port: 8003
+  args: ["--port", "8003", "--read-only"]
+  envFromSecret: "github-token"
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentMCPServer
+metadata:
+  name: filesystem
+spec:
+  image: "mcp/filesystem:1.0.0"
+  port: 8004
+  args: ["--port", "8004", "--root", "/workspace"]
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentMCPServer
+metadata:
+  name: internal-api
+spec:
+  image: "registry.internal/mcp/internal-api:2.0.0"
+  port: 8005
+  args: ["--port", "8005", "--base-url", "https://api.internal"]
+  envFromSecret: "internal-api-creds"

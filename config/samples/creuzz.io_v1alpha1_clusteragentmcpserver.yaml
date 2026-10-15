@@ -1,0 +1,9 @@
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentMCPServer
+metadata:
+  name: postgres-staging
+spec:
+  image: "registry.interne/mcp/postgres:1.2.0"
+  port: 8001
+  args: ["--port", "8001"]
+  envFromSecret: "staging-db-creds"

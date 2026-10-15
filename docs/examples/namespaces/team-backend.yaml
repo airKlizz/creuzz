@@ -1,0 +1,75 @@
+# Namespace: team-backend
+#
+# Template for team namespace.
+# Apply with: kubectl apply -f team-backend.yaml
+#
+# After applying, create required secrets:
+#
+# Git SSH credentials:
+#   kubectl create secret generic github-ssh-creds -n team-backend \
+#     --from-file=id_ed25519=~/.ssh/id_ed25519 \
+#     --from-file=known_hosts=~/.ssh/known_hosts
+#
+# AWS credentials:
+#   kubectl create secret generic aws-dev-creds -n team-backend \
+#     --from-literal=access_key="$AWS_ACCESS_KEY_ID" \
+#     --from-literal=secret_key="$AWS_SECRET_ACCESS_KEY"
+#
+# Database credentials:
+#   kubectl create secret generic staging-db-creds -n team-backend \
+#     --from-literal=POSTGRES_HOST="postgres.staging.internal" \
+#     --from-literal=POSTGRES_PORT="5432" \
+#     --from-literal=POSTGRES_USER="agent" \
+#     --from-literal=POSTGRES_PASSWORD="$DB_PASSWORD" \
+#     --from-literal=POSTGRES_DATABASE="billing"
+#
+# GitHub token:
+#   kubectl create secret generic github-token -n team-backend \
+#     --from-literal=GITHUB_TOKEN="$GITHUB_TOKEN"
+#
+# LLM API keys:
+#   kubectl create secret generic llm-api-keys -n team-backend \
+#     --from-literal=anthropic="$ANTHROPIC_API_KEY" \
+#     --from-literal=openai="$OPENAI_API_KEY"
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-backend
+  labels:
+    name: team-backend
+    environment: development
+    team: backend
+  annotations:
+    description: "Backend team development namespace"
+---
+# Resource quota for the namespace (optional)
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: team-backend-quota
+  namespace: team-backend
+spec:
+  hard:
+    requests.cpu: "20"
+    requests.memory: "40Gi"
+    requests.storage: "200Gi"
+    persistentvolumeclaims: "20"
+    pods: "20"
+---
+# Limit range for pods (optional)
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: team-backend-limits
+  namespace: team-backend
+spec:
+  limits:
+  - default:
+      cpu: "1"
+      memory: "2Gi"
+    defaultRequest:
+      cpu: "500m"
+      memory: "1Gi"
+    type: Container

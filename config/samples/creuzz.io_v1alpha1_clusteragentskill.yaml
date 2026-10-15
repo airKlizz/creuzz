@@ -1,0 +1,12 @@
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentSkill
+metadata:
+  name: clean-architecture
+spec:
+  fileName: "clean-arch.md"
+  content: |
+    # Clean Architecture Guidelines
+    - Isoler les couches Domaine et Infra.
+    - DTOs obligatoires en entrée de contrôleur.
+    - Pas de dépendances du domaine vers l'extérieur.
+    - Utiliser des interfaces pour les ports (ports & adapters).

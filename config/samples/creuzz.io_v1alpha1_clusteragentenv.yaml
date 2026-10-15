@@ -1,0 +1,17 @@
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentEnv
+metadata:
+  name: aws-dev-profile
+spec:
+  variables:
+    - name: AWS_DEFAULT_REGION
+      value: "eu-west-3"
+    - name: LOG_LEVEL
+      value: "debug"
+  secrets:
+    - name: AWS_ACCESS_KEY_ID
+      secretRef: "aws-dev-creds"
+      key: "access_key"
+    - name: AWS_SECRET_ACCESS_KEY
+      secretRef: "aws-dev-creds"
+      key: "secret_key"

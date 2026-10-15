@@ -1,0 +1,8 @@
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentTool
+metadata:
+  name: node-20
+spec:
+  image: "registry.interne/tools/node:20-alpine"
+  mountPath: "/opt/tools/node"
+  binPath: "/opt/tools/node/bin"

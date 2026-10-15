@@ -1,0 +1,155 @@
+# Catalog: Skills
+#
+# Markdown skills for agent context.
+# Apply with: kubectl apply -f skills.yaml
+
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentSkill
+metadata:
+  name: clean-architecture
+spec:
+  fileName: "clean-arch.md"
+  content: |
+    # Clean Architecture Guidelines
+
+    ## Layer Structure
+    - **Domain**: Pure business logic, no external dependencies
+    - **Application**: Use cases and orchestration
+    - **Infrastructure**: External concerns (DB, HTTP, messaging)
+    - **Interface**: Controllers, presenters, gateways
+
+    ## Rules
+    - Dependencies point inward only
+    - DTOs required at controller boundaries
+    - No framework dependencies in domain layer
+    - Use interfaces (ports) for external dependencies
+
+    ## Example Structure
+    ```
+    /internal
+      /domain        # Entities, value objects
+      /application   # Use cases, DTOs
+      /infrastructure # Repositories, external clients
+      /interfaces    # HTTP handlers, CLI
+    ```
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentSkill
+metadata:
+  name: security-best-practices
+spec:
+  fileName: "security.md"
+  content: |
+    # Security Best Practices
+
+    ## Secrets Management
+    - Never commit secrets to version control
+    - Use environment variables for sensitive data
+    - Rotate credentials regularly
+    - Use secret managers (Vault, AWS Secrets Manager)
+
+    ## Input Validation
+    - Validate all user inputs
+    - Use allowlists, not blocklists
+    - Sanitize output to prevent injection
+    - Set maximum input sizes
+
+    ## Dependencies
+    - Keep dependencies updated
+    - Scan for vulnerabilities (Dependabot, Snyk)
+    - Use minimal base images (Alpine, Distroless)
+    - Verify image signatures
+
+    ## Network Security
+    - Use TLS for all communications
+    - Implement network policies
+    - Principle of least privilege
+    - Zero-trust architecture
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentSkill
+metadata:
+  name: rest-api-design
+spec:
+  fileName: "rest-api.md"
+  content: |
+    # REST API Design Standards
+
+    ## Resource Naming
+    - Use plural nouns: `/users`, `/orders`
+    - Use kebab-case for multi-word: `/order-items`
+    - Nest resources logically: `/users/{id}/orders`
+    - Avoid verbs in URLs
+
+    ## HTTP Methods
+    | Method | Purpose | Idempotent | Safe |
+    |--------|---------|------------|------|
+    | GET | Read | Yes | Yes |
+    | POST | Create | No | No |
+    | PUT | Replace | Yes | No |
+    | PATCH | Update | No | No |
+    | DELETE | Delete | Yes | No |
+
+    ## Status Codes
+    - `200 OK` — Successful GET, PUT, PATCH
+    - `201 Created` — Successful POST
+    - `204 No Content` — Successful DELETE
+    - `400 Bad Request` — Invalid input
+    - `401 Unauthorized` — Authentication required
+    - `403 Forbidden` — Insufficient permissions
+    - `404 Not Found` — Resource doesn't exist
+    - `409 Conflict` — Resource conflict
+    - `500 Internal Server Error` — Server error
+
+    ## Versioning
+    - URL versioning: `/v1/users`, `/v2/users`
+    - Deprecate with `Sunset` header
+    - Support at least one previous version
+
+    ## Pagination
+    - Cursor-based for large datasets
+    - Include `next` and `prev` links
+    - Default page size: 20, max: 100
+---
+apiVersion: creuzz.io/v1alpha1
+kind: ClusterAgentSkill
+metadata:
+  name: testing-standards
+spec:
+  fileName: "testing.md"
+  content: |
+    # Testing Standards
+
+    ## Unit Tests
+    - Test one thing per test case
+    - Use table-driven tests (Go)
+    - Mock external dependencies
+    - Aim for >80% code coverage
+    - Fast execution (< 1s for unit tests)
+
+    ## Integration Tests
+    - Use testcontainers for dependencies
+    - Clean up resources after tests
+    - Use unique names to avoid conflicts
+    - Test happy path and error cases
+
+    ## Test Structure (AAA Pattern)
+    ```go
+    func TestUserService_Create(t *testing.T) {
+        // Arrange
+        svc := NewUserService(mockRepo)
+        user := &User{Name: "John"}
+
+        // Act
+        err := svc.Create(context.Background(), user)
+
+        // Assert
+        assert.NoError(t, err)
+        assert.NotEmpty(t, user.ID)
+    }
+    ```
+
+    ## Test Naming
+    - `Test<Function>_<Scenario>_<ExpectedResult>`
+    - Example: `TestCreateUser_DuplicateEmail_ReturnsError`

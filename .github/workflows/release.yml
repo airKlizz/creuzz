@@ -1,0 +1,121 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version from tag
+        id: meta
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
+      - name: Build and push versioned image
+        run: |
+          make docker-build docker-push IMG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+
+      - name: Build and push latest image
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          make docker-build docker-push IMG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Image digest
+        run: echo "Image pushed to ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}"
+
+  generate-bundle:
+    name: Generate Install Bundle
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Set up Kustomize
+        run: make kustomize
+
+      - name: Generate install.yaml bundle
+        run: |
+          make build-installer IMG=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.version }}
+
+      - name: Verify bundle exists
+        run: |
+          test -f dist/install.yaml || (echo "Bundle not found" && exit 1)
+          echo "✅ Bundle generated: $(wc -l < dist/install.yaml) lines"
+
+      - name: Upload bundle as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-bundle
+          path: dist/install.yaml
+          retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ needs.build-and-push.outputs.version }}
+          body: |
+            ## 🚀 Creuzz ${{ needs.build-and-push.outputs.version }}
+
+            ### Installation
+
+            ```bash
+            # Install CRDs and operator
+            kubectl apply -f https://github.com/${{ github.repository }}/releases/download/${{ needs.build-and-push.outputs.version }}/install.yaml
+
+            # Or install CRDs only
+            kubectl apply -f https://raw.githubusercontent.com/${{ github.repository }}/${{ needs.build-and-push.outputs.version }}/config/crd/bases/
+            ```
+
+            ### Docker Image
+
+            ```
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ```
+
+            ### What's Changed
+
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          files: |
+            dist/install.yaml
+          generate_release_notes: true
+          draft: false
+          prerelease: false

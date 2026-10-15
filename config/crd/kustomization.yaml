@@ -1,0 +1,7 @@
+resources:
+- bases/creuzz.io_clusteragenttools.yaml
+- bases/creuzz.io_clusteragentskills.yaml
+- bases/creuzz.io_clusteragentmcpservers.yaml
+- bases/creuzz.io_clusteragentenvs.yaml
+- bases/creuzz.io_clusteragentegressrules.yaml
+- bases/creuzz.io_opencodeagents.yaml

@@ -1,0 +1,63 @@
+# Full-Stack Agent Example
+#
+# Complete OpenCode agent with all features:
+# - Multiple tools (terraform, node)
+# - Multiple skills (architecture, security)
+# - MCP servers (postgres, github)
+# - Environment profiles (AWS, LLM)
+# - Egress rules (anthropic, github, registries)
+#
+# Prerequisites:
+#   - All catalog resources from catalog/ directory applied
+#   - Secrets created in namespace:
+#     - github-ssh-creds (id_ed25519, known_hosts)
+#     - aws-dev-creds (access_key, secret_key)
+#     - staging-db-creds (POSTGRES_*)
+#     - github-token (GITHUB_TOKEN)
+#     - llm-api-keys (anthropic, openai)
+#
+apiVersion: creuzz.io/v1alpha1
+kind: OpenCodeAgent
+metadata:
+  name: full-stack-agent
+  namespace: team-backend
+  labels:
+    app.kubernetes.io/name: full-stack-agent
+    app.kubernetes.io/component: agent
+    team: backend
+  annotations:
+    description: "Complete agent with all Creuzz features"
+    docs: "https://github.com/airklizz/creuzz/docs"
+spec:
+  project:
+    repoUrl: "git@github.com:myorg/billing-service.git"
+    branch: "main"
+    secretRef: "github-ssh-creds"
+  runtime:
+    image: "registry.internal/opencode-base:v2.0.0"
+    cpu: "2"
+    memory: "4Gi"
+    storage: "10Gi"
+  # Tools (OCI image volumes)
+  clusterToolRefs:
+    - name: "terraform-1-5"
+    - name: "node-20"
+  # Skills (markdown injection)
+  clusterSkillRefs:
+    - name: "clean-architecture"
+    - name: "security-best-practices"
+  # MCP servers (sidecars)
+  clusterMcpRefs:
+    - name: "postgres-staging"
+    - name: "github-mcp"
+  # Environment profiles
+  clusterEnvRefs:
+    - name: "aws-dev-profile"
+    - name: "llm-config"
+  # Network egress rules
+  clusterEgressRefs:
+    - name: "allow-anthropic"
+    - name: "allow-github"
+    - name: "allow-package-registries"
+  # Scale to zero after 2 hours of inactivity
+  ttlAfterIdle: "2h"
